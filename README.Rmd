@@ -26,6 +26,7 @@ In the third task, I opened the index.Rmd file in Rstudio and added author:"Your
 
 In the fouth task, I created a new R markdown file. When opening the file, the system automatically added some example syntax on the page. After playing around with those syntaxes I removed all the exmaple code and added a new title (Course diary), subtitles (First Week) and wrote couple of lines about the course. When saving the new Rmd file to my IODS-project folder, I named is as README.Rmd as recuested. Finally, I changed the theme of the htlm codument to *sandstone* to changes the appearance of the page.
 
-After finishing all the tasks, I uploaded the changes made to my local repository files to GitHub
+
+After finishing all the tasks, I uploaded the changes made to my local repository files to GitHub for futher evaluation. 
 
 

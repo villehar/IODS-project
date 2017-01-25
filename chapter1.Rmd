@@ -1,4 +1,11 @@
 
 # About the project
 
-*Write a short description about the course and add a link to your github repository here. This is an R markdown (.Rmd) file so you can use R markdown syntax. See the 'Useful links' page in the mooc area (chapter 1) for instructions.*
+## Description of the IODS course 
+
+The introduction to data science course takes us to a tour that introduces us to the core themes of open data science. Along the course we will learn the principles and advantages of using open research tools and open data to do reproducible research. To achieve this goal, We wil learn how to use some of the most common open rresearch tools, such R, Rstudio, Rmarkdown and GitHub. In addtition, we well learn to apply these tools for running a set of statistical methods, including linear models and data clustering.
+
+
+The link attached below will take you to my GitHub repository where you can find my Rstudio projects.
+
+https://github.com/villehar/IODS-project
