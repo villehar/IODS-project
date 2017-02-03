@@ -33,9 +33,9 @@ After finishing all the tasks, I uploaded the changes made to my local repositor
 
 ### Rstudio Exercise 2
 
-I started the exercise by creating a folder 'data' to my local IODS-project folder and saving a R script "create_learning2014" there. Then I read the "learning2014" data into R and prepared the data for the analysis stage. Further description of the data wrangling can be found in the "create_learning2014" script. 
+I started the exercise by creating a folder "data" to my local IODS-project folder and saving a R script "create_learning2014" there. Then I read the "learning2014" data into R and prepared the data for the analysis stage. Further description of the data wrangling can be found in the "create_learning2014.R" script. 
 
-Below you can see the resulting file which has 166 observations (rows) and 7 variables (columns).  The dataset describes students' ratings of their learning styles (deep, surface and strategic) attitudes towards mathematics and exam points as well as demographic informations.  
+Below you can see the resulting file which has 166 observations (rows) and 7 variables (columns). The dataset describes students' ratings of learning styles (deep, surface and strategic), attitudes towards mathematics, exam points, and demographic informations.  
 
 ```{r}
 Data14 = read.csv(file = "data/learning2014.csv", header = TRUE)
@@ -46,7 +46,10 @@ str(Data14)
 
 ```
 
-Exploring the data frame revealed that ....
+The data frame was initially explored using a ggpairs command which produrudes a set of descriptive graphics such as scatter plots, mean plots, and histograms. Here I have plotted all the graphs separately for males and females to see whether the associations of continuous variables differ between genders. Distribution of age was negatively skewed whereas other variables were more or less normally distributed. The distributions were similar in females and males, except in attitude where females seemed to have lower average scores.
+
+
+The scatter plots and correlation matrixes revealed a moderate negative correlations between attitude and exam points and negative correlation between surface and deep learning style. The strength of other correlations was relatively small (rs < .146). Besides the small gender related differenced in strategic style and attitude as well as deep style and attitudes, no other gender effects were observed. 
 
 ```{r}
 library(GGally)
@@ -54,6 +57,28 @@ library(ggplot2)
 explorative_plot <- ggpairs(Data14, mapping = aes(col = gender), lower = list(combo = wrap("facethist", bins = 20)))
 explorative_plot
 ```
+
+Based on the preliminary inspection, I then selected three variables (attitude, stra and surf) as independent variables and points as the dependent variable and fitted a multiple regression model. Summary of the model revealed a statistically significant effect of attitude on exam points indiacting that more positive attitudes toward mathematics were associated to higher performance in the exam. The estimated effects of strategic and surface learning style were not significant. The multiple R-squared (0.2074) indicated that the model predicted about 21 percent of the variation in students' exam points. 
+
+Given that both stra and surf were not significant, I removed them from the model and fitted it again (model2) with a single predictor (attitude). The estimated slope of attitude became slightly higher compared to the model1 whereas the multiple R-squared decreased to 0.1906. The mode2 proofed to be better as it was much simpler and had almost the same explanatory power with only one predictor. The observed multible R-squared of 0.1906 indicated that about 19 percent of the variability in the response (points) was explained by the attitude variable. 
+
+```{r}
+model1 <- lm(Points ~ Attitude + stra + surf, data = Data14)
+summary(model1)
+
+model2 <- lm(Points ~ Attitude, data = Data14)
+summary(model2)
+```
+
+Sometimes the coefficient estimates are biased because the regression model does not actually fit the data. To see whether the assuptions of linear models were met, I ran a set of model diagnostics, namely plots of residuals vs Fitted values, Normal QQ-plot and Residuals vs Leverage.
+
+```{r}
+par(mfrow = c(2,2))
+plot(model2, which = c(1,2,5))
+```
+
+Plotting the residuals against fitted values revealed no signs of heteroscedasticity meaning that the residuals and the fitted values were uncorrelated. The assumption of normally distributed errors was also met because the deviations of residuals from the theoretical normal distribution were mininal. Finally, plotting the standardized residuals against leverage revealed no clear influential outlier cases. All cases were well in the reach of the Cook's distance line. 
+
 
 
 
