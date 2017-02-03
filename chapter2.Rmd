@@ -29,3 +29,31 @@ In the fouth task, I created a new R markdown file. When opening the file, the s
 After finishing all the tasks, I uploaded the changes made to my local repository files to GitHub
 
 
+## Second week: Regression and model varidation
+
+### Rstudio Exercise 2
+
+I started the exercise by creating a folder 'data' to my local IODS-project folder and saving a R script "create_learning2014" there. Then I read the "learning2014" data into R and prepared the data for the analysis stage. Further description of the data wrangling can be found in the "create_learning2014" script. 
+
+Below you can see the resulting file which has 166 observations (rows) and 7 variables (columns).  The dataset describes students' ratings of their learning styles (deep, surface and strategic) attitudes towards mathematics and exam points as well as demographic informations.  
+
+```{r}
+Data14 = read.csv(file = "data/learning2014.csv", header = TRUE)
+Data14 <- Data14[,c(4,1,2,3,5,6,7)]
+dim(Data14)
+str(Data14)
+
+
+```
+
+Exploring the data frame revealed that ....
+
+```{r}
+library(GGally)
+library(ggplot2)
+explorative_plot <- ggpairs(Data14, mapping = aes(col = gender), lower = list(combo = wrap("facethist", bins = 20)))
+explorative_plot
+```
+
+
+
