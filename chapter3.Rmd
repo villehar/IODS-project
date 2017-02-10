@@ -1,0 +1,153 @@
+---
+title: "chapter3"
+author: "Ville Harjunen"
+date: "February 9, 2017"
+output: html_document
+---
+
+# Week 3: Logistic regression
+
+## Data Wrangling exercise
+
+I started the exercise creating a R script "create_alc.R" and saving it to the "data" folder of my local project repository. Then I read the "student-mat" and "student-por" data sets into R and merged them for the analysis stage. Further description of the data wrangling can be found in the "create_alc.R" script.
+
+Below you can see the resulting alc data which has 382 observations (rows) and 35 variables (columns). 
+
+```{r}
+alc = read.csv(file = "data/student_alc.csv", header = TRUE)
+
+dim(alc)
+
+colnames(alc)
+```
+
+The dataset describes students' alcohol consumption, absence from school and exam grades. It also contains information regarding students' school, sex, age and other backgroud informaation. The alc_use variable describes alcohol use averaged over week and weekend and the high_use is a logical variable of high alcohol use. The data was uploaded from the UCI Machine Learning repository https://archive.ics.uci.edu/ml/datasets/STUDENT+ALCOHOL+CONSUMPTION. 
+
+Before running any analyses I selected the "high_use" as my outcome variable and "sex", "absences, "goout" (going out with friends), and "G3" (grade from the final exam) as predictors. My hypotheses were as follows:
+
+H1: there are more high alcohol consumption in males than females
+H2: higher absence rates predict higher likelihood of high use
+H3: Lower grades in the final exam are related to higher probability of high use
+H4: Higher levels of goout are related to higher probability of high use
+
+Next, I created a subset of the aforementioned variables and saved it into alc_small
+
+```{r}
+alc_small <- alc[, c(2, 26, 30,33,35)]
+```
+
+
+When graphically exploring the distributions of the chosen variables it was found that only the goout was normally distributed. There were almost equal amount of males and females and there were about 100 high users and 300 with low alcohol consumption. 
+
+
+```{r}
+
+library(tidyr); library(dplyr); library(ggplot2)
+gather(alc_small) %>% glimpse
+gather(alc_small) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar()
+
+            
+```
+
+To better understand the relationship of the selected predictors to alcohol use, I printed out a crosstable. That revealed that there were more high users in males and that the grades of high user males were lower than low user males. Additionally, the absences and goout ratings were also higer in high use students.
+
+To sum up, these preliminary findings give support to my hypotheses. The only exception are the exam grades. There the relationship between low grades and alcohol use is only present in males. 
+
+```{r}
+alc_small %>% group_by(sex, high_use) %>% summarise(count = n(), mean_grade = mean(G3), Absences = mean(absences), Going_out = mean(goout))
+```
+
+To see whether the selected predictors were able to statistically significantly predict high_use, I fitted a logistic regression model adding sex, absences, goout and G3 as predictors and high_use as binary outcome. 
+
+
+```{r}
+m <- glm(high_use ~ sex + absences + goout + G3, data = alc, family = "binomial")
+summary(m)
+
+```
+
+Printing out the model summary revealed statistically significant effects of sex, absences, and goout on the high_use. The effect of G3 (grades) was not significant. Then, estimated coefficients were used to calculate odd ratios and their CIs.
+
+```{r}
+OR <- coef(m) %>% exp
+CI <- confint(m) %>% exp
+cbind(OR, CI)
+
+```
+
+Investigating the odd ratios revealed that the risk of high use was 2.59 times more likely in males than females and 2.03 times more likely in persons that used to go out with their friends more often. The absences were also related to higher use but here the effect was more modest (OR = 1.08). Only the G3 odd ratio (takin into account the confidence intervals) was crossing 1 which means that the odds of high use was unaffected by the G3 (the same odds on every level of G3). 
+
+Because the G3 did not predict high_use I greated a new logistic regression model (m2) by removing G3 from the formula. The model summary shows that removing the G3 did not change the coefficients of other predictors. Only the intercept was changed from -3.57 to -4.16. 
+
+```{r}
+m2 <- glm(high_use ~ sex + absences + goout, data = alc, family = "binomial")
+summary (m2)
+```
+
+The results of m2 were pretty similar to those of m. A chi-square test was calculated to see whether the model fit was better in the more complex "m" than in the "m2". Thre was no difference in the goodness of fit.   
+
+```{r}
+anova(m, m2, test ="Chisq")
+```
+
+
+The odd ratios show again that sex and goout had the highest prediction power.   
+
+```{r}
+OR <- coef(m2) %>% exp
+CI <- confint(m2) %>% exp
+cbind(OR, CI)
+```
+
+The m2 was then used to create a prediction variable. The prediction was used to see how much the actual data differs from the predicted values.
+
+```{r}
+# predicting the probability of high_use
+probabilities <- predict(m2, type = "response")
+
+# add the predicted probabilities to 'alc'
+alc <- mutate(alc, probability = probabilities)
+
+# adding a logical variable of succesfull predictions
+alc <- mutate(alc, prediction = probability > 0.5 )
+
+
+```
+
+Drawing a crosstab of probabilities of the model to give wrong answer revealed that in 66% out of 83% of cases the model correctly predicted low use and in 12% out of 16.7% cases the model was corrent in predicting high use.  
+
+
+```{r}
+# drawing a crosstab of probabilities
+table(high_use = alc$high_use, prediction = alc$prediction) %>% prop.table() %>% addmargins()
+
+```
+
+
+Finally, I calculated the penalty/loss rate which indicates how many times the model classified observations incorrectly. In order to do so, I defined a loss function and feed in the probability and correct (high_use) values.The average number of incorrect predictions was 20.9.
+
+
+```{r}
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+loss_func(class = alc$high_use, prob = alc$probability)
+```
+
+Finally I carried out a cross validation to see how well my model would perform with randomly allocated bits of the alc data. For this, a 10-fold cross-validation vas used. The resulting average of incorrect classifications was 20.68, that is lower than the one obtained before. 
+
+```{r}
+library(boot)
+# K-fold cross-validation
+cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10)
+
+# average number of wrong answers
+cv$delta[1]
+```
+
+
+
+
+
