@@ -11,6 +11,8 @@ output: html_document
 
 I started the exercise creating a R script "create_alc.R" and saving it to the "data" folder of my local project repository. Then I read the "student-mat" and "student-por" data sets into R and merged them for the analysis stage. Further description of the data wrangling can be found in the "create_alc.R" script.
 
+## Data analysis exercise
+
 Below you can see the resulting alc data which has 382 observations (rows) and 35 variables (columns). 
 
 ```{r}

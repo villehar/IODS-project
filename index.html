@@ -147,6 +147,7 @@ $(document).ready(function () {
 </ul></li>
 <li><a href="#week-3-logistic-regression">Week 3: Logistic regression</a><ul>
 <li><a href="#data-wrangling-exercise">Data Wrangling exercise</a></li>
+<li><a href="#data-analysis-exercise">Data analysis exercise</a></li>
 </ul></li>
 </ul>
 </div>
@@ -255,6 +256,9 @@ plot(model2, which = c(1,2,5))</code></pre>
 <div id="data-wrangling-exercise" class="section level2">
 <h2>Data Wrangling exercise</h2>
 <p>I started the exercise creating a R script “create_alc.R” and saving it to the “data” folder of my local project repository. Then I read the “student-mat” and “student-por” data sets into R and merged them for the analysis stage. Further description of the data wrangling can be found in the “create_alc.R” script.</p>
+</div>
+<div id="data-analysis-exercise" class="section level2">
+<h2>Data analysis exercise</h2>
 <p>Below you can see the resulting alc data which has 382 observations (rows) and 35 variables (columns).</p>
 <pre class="r"><code>alc = read.csv(file = &quot;data/student_alc.csv&quot;, header = TRUE)
 
@@ -429,7 +433,7 @@ cv &lt;- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10)
 
 # average number of wrong answers
 cv$delta[1]</code></pre>
-<pre><code>## [1] 0.2068063</code></pre>
+<pre><code>## [1] 0.2015707</code></pre>
 <hr />
 </div>
 </div>
