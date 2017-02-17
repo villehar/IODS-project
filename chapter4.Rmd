@@ -9,7 +9,7 @@ output: html_document
 
 ## Excercise 4: Analysis exercises
 
-I starter the week's exercise by downloading the Boston data set included in the MASS package. The Boston data frame has 506 rows (observations) and 14 columns (variables). The data contains variables such as per capita crime rate (crim), proportion of non-retail business acres per town (indus), full-value property-tax rate per \$10,000 (tax), and proportion of blacks by town (black). All the variables are continuous.
+I starter the week's exercise by downloading the Boston data set included in the MASS package. The Boston data frame has 506 rows (observations) and 14 columns (variables). The data contains variables such as per capita crime rate (crim), proportion of non-retail business acres per town (indus), full-value property-tax rate per \$10,000 (tax), and proportion of blacks by town (black). All but one variables were continuous.
 
 ```{r}
 library(MASS)
@@ -18,11 +18,185 @@ str(Boston)
 
 ```
 
+Then, I used histograms and summary statistics to explore the distributions and other descriptive statistics. The distribution of town related crime rate (crim) was negatively skewed with median of 3.61 crimes per capita whereas the proportion of black people by town (black) was positively skewed with median of 391.44. Only normally distributed variable was the average number of rooms per dwelling (rm). The exploration revealed also a dummy coded Charles River variable. Based on the values, most of the towns were not tracking the river bounds. 
+
 ```{r}
 library(GGally)
 library(ggplot2)
-explot <- ggpairs(Boston, mapping = aes(), lower = list(combo = wrap("facethist", bins = 20)))
-explot
+library(tidyr)
+library(dplyr)
+gather(Boston) %>% glimpse
+gather(Boston) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_histogram()
 
 ```
+
+```{r}
+summary(Boston)
+```
+
+When investigating the associations between all continuous variables, the strongest negative correlations (r < -.5) were found between Istat and zn, dis and age, dis and indus, and dis and nox.  Crime rate (crim) correlated negatively with rm, medv, zn, and dis. The cross indicates nonsignificant correlation.  
+
+
+```{r}
+library(corrplot)
+bos <- cor(Boston)
+round(bos, 2)
+corrplot(bos, type="upper", order="hclust", 
+         p.mat = bos)
+```
+
+Next, I scaled the Boston data. The Scaling was done by substracting the column means from the corresponding columns and dividing the difference with standard deviation. As a result of the scaling all variable means were set to zero. Scaling the data frame changes the data type to matrix for which reason I had to change it back to data frame after the scaling was done.
+
+```{r}
+bostonZ <- scale(Boston)
+summary(bostonZ)
+
+bostonZ <- as.data.frame(bostonZ)
+```
+
+The crim variabe was then categorized cutting it to quantiles. 
+
+```{r}
+scaled_crim <- bostonZ$crim
+# creatING a quantile vector of crim 
+bins <- quantile(scaled_crim)
+# setting the quantiles as the break points and creating a categorical crime variable
+crime <- cut(scaled_crim, breaks = bins, include.lowest = TRUE, label = c("low", "med_low", "med_high", "high"))
+# remove the crim
+bostonZ <- dplyr::select(bostonZ, -crim)
+# add the crime
+bostonZ <- data.frame(bostonZ, crime)
+#
+
+```
+
+After creating the categorical crime variable I splitted the scaled Boston data to two sets: training set and test set. The training set consisted of 80% randomly chosen observations whereas the test set consisted of the remaining 20% of the rows. 
+
+```{r}
+# defining the number of rows in the scaled Boston dataset 
+n <- nrow(bostonZ)
+
+# randomly choosing 80% of the rows
+ind <- sample(n,  size = n * 0.8)
+
+# creating a train set
+train <- bostonZ[ind,]
+
+# creating a test set 
+test <- bostonZ[-ind,]
+
+# saving the correct classes from test data to a separate vector
+correct_classes <- test$crime
+
+# removing the crime variable from test data
+test <- dplyr::select(test, -crime)
+```
+
+The training set was used for creating a linear discriminant analysis (LDA) functions that could be later utilized to cluster new set of observations to correct classes of crime. The purpose of linear discriminant analysis was to find the linear combinations of the continuous variables (13 variables from the boston data) giving the best possible separation between the groups (crime quantiles). The maximum number of estimated discriminant functions is usually defined as the amount of groups (crime quantiles) subtracted by 1 (in this case 3 discriminant functions).
+
+```{r}
+# Running linear discriminant analysis (lda) on the train data crime set as the target
+lda.fit <- lda(crime ~ ., data = train)
+lda.fit
+```
+
+Coefficients of linear discriminants (LD) described above show two (one for each LD) linear combination of the variables, for instace LD1: 0.15 x zn + 0.02 x indus ... 0.13 x medv. The proportion of trace revealed that LD1 explains 95% of the between-group variance whereas LD2 and LD3 explain only 3.7% and 1.2% respectively. Since the LD3 explained so small portion of the variance, I dropped that out when drawing the biplots. 
+
+when creating the biplot of the model also the so-called biplot arrows were added. A separate function was used for adding the arrows to the biplot. As revealed by the biplot, the **** first discriminant function (LD1) separates high crime class from other classes but doesn't perfectly separate low, med_low and med_high. LD2 is unable to separate the high from other classes but performs relatively well in separating low from med_high. There is, however, no perfect dimension to separate the med_low and med_high levels. 
+
+
+```{r}
+# the function for lda biplot arrows
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+# target classes as numeric
+classes <- as.numeric(train$crime)
+
+# plot the lda results
+plot(lda.fit, dimen = 2, col = classes, pch = classes)
+lda.arrows(lda.fit, myscale = 1)
+
+```
+
+The calculated LDA model was next used to predict the crime classes in the test data. Cross tabulating the predicted and correct results revealed that the trained LDA model performs well discriminating high crime rate observations from those belonging to a different class as there were only 2 misclassified cases. However, there is much more confusion between med_low and med_high (11 incorrectly classified cases). 
+
+```{r}
+# using the model to predict crime classes in the test data
+lda.pred <- predict(lda.fit, newdata = test)
+
+# cross tabulate the results
+table(correct = correct_classes, predicted = lda.pred$class)
+```
+
+After clustering the Boston data with the LDA, I moved on to k-means method. K-means is an unsupervised clustering method, that is it does not require training. Consecuently, it does not know the correct amount of clusters. For that reason, I had to first run the kmeans model several times for different amount of clusters (1:10). To see, which cluster amount works best, I calculated the total within subject squares of each solution and plotted that against the cluster number (x-axis).  
+
+
+```{r}
+
+data('Boston')
+
+BostonScaled <- scale(Boston)
+
+set.seed(123)
+
+# euclidean distance matrix
+dist_eu <- dist(BostonScaled)
+summary(dist_eu)
+
+# determine the maximum number of clusters
+k_max <- 10
+
+# calculate the total within sum of squares of each kmeans solution with a varying amount of clusters
+twcss <- sapply(1:k_max, function(k){kmeans(dist_eu, k)$tot.withinss})
+
+# visualize the results
+plot(1:k_max, twcss, type='b')
+```
+
+According to the image above it seemed that after two clusters the total within sum of squares did not change much indicating that optimal amount of clusters would be 2. The k-means mode was then run with two clusters (i.e. centers) after which a matrix of scatter plots were exported to see which variables best differentiate between the two clusters. The scatter plot matrix showed that both rad (accessibility to radial highways) and tax (full-value property-tax rate per) were particularly useful in disrciminating the two clusters. 
+
+```{r}
+# k-means clustering
+km2 <-kmeans(dist_eu, centers = 2)
+
+# plot the Boston dataset with clusters
+pairs(Boston, col = km2$cluster)
+```
+
+Bonus: I performed the LDA using the clusters obtained from kmeans method (this time using 3 centers/clusters). The first discriminant function was found to explain 88.3% of the between group variance. 
+
+```{r}
+km3 <-kmeans(dist_eu, centers = 3)
+
+lda.fit <- lda(km3$cluster ~ ., data = Boston)
+lda.fit
+
+```
+
+Plotting the biplot revealed a pattern of three clusters finely separated by the LD1. Variables nox (nitrogen oxides concentration) and chas (Charles River) were the most influential linear separators. 
+
+
+```{r}
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+
+plot(lda.fit, dimen = 2, col = km3$cluster, pch = km3$cluster)
+lda.arrows(lda.fit, myscale = 1)
+```
+
+
 
