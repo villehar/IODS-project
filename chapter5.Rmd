@@ -1,0 +1,143 @@
+
+---
+title: "chapter5: dimension reduction"
+author: "Ville Harjunen"
+date: "15 helmikuuta 2017"
+output: html_document
+---
+
+# Week 6: Dimension reduction
+
+## Excercise 5: Analysis exercises
+
+I starter the exercise loading the "human" data set into R and exploring the data structure and dimensions. Exploring the data structure revealed that the data has 155 observations and 8 variables. Each observation represents a country and the variables describe gender ratios in health, education and economy related indexes. 
+
+```{r}
+
+human <- read.csv("data/human.csv", header = TRUE, row.names = 1)
+
+str(human)
+
+```
+
+Graphical overview of the data revealed that the female-male ration in secondary education (Edu2.FM), gender ratio in labor force (Labo.FM), expected duration of education (Edu.Exp), as well as proportion of females in parliament (Parli.F) were normally distributed. The distribution of gross national income per capita, maternal mortality and adolescent birth rate were all negatively skewed. 
+
+```{r}
+library(GGally)
+
+ggpairs(human)
+
+```
+
+Given that a correltion matrix of eight variables may be hard to grasp with brief inspection, I plotted a graphical version of it in which the correltions are represented with colored circles. The corrplot matrix revealed high positive correlations between maternal mortality and adolescent bitrh rate and expected duration of education and live expectancy. High negtive correlations were found between gender ratio of eductaion, maternal mortality and adolescent birth rate as well as life/education expectancy, maternal mortality and adolescent birth rate.
+
+```{r, warning=FALSE}
+library(corrplot)
+library(dplyr)
+
+# plotting the correlation matrix
+cor(human) %>% corrplot(, type="upper", order="hclust")
+
+```
+
+Next, I performed a principal component analysis (PCA) on the non-standardized human data. PCA is used to extract a lower dimensional representation of the data by converting the set of original variables into a smaller set of uncorrelated variables called principal components. Printing out the summary statistics of the PCA revealed that using the unstandardized data set was not a good idea. Given the huge differences in variables scales, and thus the coefficients, the proportion of variance explained by each component remained extremely low. 
+
+```{r}
+pca_human <- prcomp(human)
+summary(pca_human)
+```
+
+Plotting the biplot concretized this issue even further. The scale of GNI was so much bigger comapred to any other variable that the relative distances between the observations in terms of all variables were not visible.
+
+```{r, warning=FALSE}
+biplot(pca_human, choices = 1:2, cex = c(0.8, 1), col = c("grey40", "deeppink2"))
+```
+
+Next I scaled the human data and run the PCA agan on the standardized set. As a result of standardising, the proportion of explained variance was changed. The results above indicate that 53.6 5 of the variance in the data is explained by the first (PC1) component, 16.2 % by the second component, and 9.6 % by the third component. 
+
+```{r}
+humanz <- scale(human)
+
+
+pca_humanz <- prcomp(humanz)
+
+summary(pca_humanz)
+```
+
+Printing out the biplot revealed that the original variables could be converted into a set of two uncorrelated dimensions. The first dimension, based on the PC1, is best defined by, GNI Life.Exp, Edu.Exp, Edu2.FM, Ado.Birth, and Mat.Mor whereas the second dimension, ortogonal to the first one and best defined by PC2, reflects the set of Parli.F and Labo.FM. The figure shows that variables related to the first dimensions are highly correlated (both negatively and positively) and that the variables of the second dimensions do not correlate with those of the first dimension.
+
+The first chunck of R code is for adding the figure caption. 
+
+```{r, include=FALSE}
+# A function for captioning and referencing images
+fig <- local({
+    i <- 0
+    ref <- list()
+    list(
+        cap=function(refName, text) {
+            i <<- i + 1
+            ref[[refName]] <<- i
+            paste("Figure ", i, ": ", text, sep="")
+        },
+        ref=function(refName) {
+            ref[[refName]]
+        })
+})
+```
+```{r, echo=FALSE, fig.cap=fig$cap("cars","The scoring of 155 countries and loading of original variables on the first two principal components. The left and bottom axes are showing [standardized] principal component scores and the top and right axes are showing the loadings.")}
+biplot(pca_humanz, choices = 1:2, cex = c(0.6, 1.1), col = c("grey40", "deeppink2"), expand = 1, xlim  = c(-0.25, 0.25), ylim  = c(-0.25, 0.25))
+
+
+```
+
+The gender ratio in  labor force (Labo.FM) and the females' share of seats in parliament can be seen to form the PC2 which is uncorrelated to the second component (PC1) that consists of health, economy and education related variables. Thus, the biplot suggests that countries can be located in relation to two dimensions: covernance and labor force related gender ineguality (PC2) and general human development (PC1).  
+
+## It's tea time!
+
+Finally, I loaded a new "tea" data set and used Multible correspondence analysis (MCA) on the data set. The tea data consists of 35 factorial variables, 1 continuos variable (age) and 300 observations describing tea user's preferences and habits. 
+
+```{r}
+library(FactoMineR)
+
+# loading the tea data
+data("tea")
+str(tea)
+
+```
+
+To simplify the analysis, I then selected a subset of variables and created a new tea_time data set with 8 variables. Exploring the distributions revealed, for instance, that drinking tea was thought not affecting health by most of the individuals and that most of the individuals drank tea two or more times per day.
+
+```{r, fig.height=10}
+library(ggplot2)
+library(tidyr)
+
+
+tea_time <- dplyr::select(tea, one_of(c("how", "effect.on.health", "where", "healthy", "price", "tearoom", "frequency", "sugar")))
+
+gather(tea_time) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+```
+
+This smaller data set was used to run a multible correspondence analysis (MCA). MCA allows researchers to analyze the systematic patterns of variations within a data that consists of categorical variables. 
+
+Printing out the MCA summary revealed that the first dimension explained 14.13 % of the variation whereas the second dimension accounted for 11.1% of the variation. The second table shows data of the first 10 individuals in relation to the dimensions, the third table shows loadings of the variable categories, and the last table shows the eta squared values between the variables and dimensions. The first dimensions seems to reflect preferences related to tea quality and whereas the third one is associated to health. Meaning of the second dimension is less clear as it seems to capture variance of both health and quality related variables.  
+
+```{r}
+# running the MCA
+mca <- MCA(tea_time, graph = FALSE)
+
+# printing out the model statistics
+summary(mca)
+
+```
+
+Printing out the biplot demonstrates the same findings. There are two unrelated dimensions: one related to health (more clearly visible form the Dim 2 perspective) and another relared to tea consumption/snobbery (Dim 1). There seems to be also a third class of users who score high in both dimensions, that is they prefer unpackaged and expensive tea from tea shops.
+
+```{r}
+library("devtools")
+library("factoextra")
+
+fviz_mca_biplot(mca, axes = c(1, 2), geom = c("point", "text", "arrow"),
+  label = "all")
+```
+
+
